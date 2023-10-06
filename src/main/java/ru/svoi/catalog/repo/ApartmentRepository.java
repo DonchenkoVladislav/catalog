@@ -4,7 +4,9 @@ import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
 import ru.svoi.catalog.models.ApartmentDescription;
 
+import java.util.Calendar;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.stream.StreamSupport;
 
 @Repository
@@ -15,5 +17,10 @@ public interface ApartmentRepository extends CrudRepository<ApartmentDescription
                 .filter(apartmentDescription -> apartmentDescription.getCity().equals(city))
                 .map(ApartmentDescription::getId)
                 .toList();
+    }
+
+    default Integer getSummaryByDateList(ApartmentDescription apartment, List<Calendar> calendarList) {
+
+        return apartment.getSummary() * calendarList.size();
     }
 }

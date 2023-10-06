@@ -14,26 +14,33 @@ import org.springframework.stereotype.Service;
 import ru.svoi.catalog.dto.ByteArrayInputStreamSerializer;
 import ru.svoi.catalog.dto.ByteArrayResourceSerializer;
 import ru.svoi.catalog.dto.Catalog;
+import ru.svoi.catalog.dto.FullApartmentInfo;
 import ru.svoi.catalog.dto.Item;
 import ru.svoi.catalog.dto.MainPhotoDto;
 import ru.svoi.catalog.models.ApartmentDescription;
+import ru.svoi.catalog.models.Image;
 import ru.svoi.catalog.models.MainImage;
 import ru.svoi.catalog.repo.ApartmentRepository;
+import ru.svoi.catalog.repo.ImageRepository;
 import ru.svoi.catalog.repo.MainImageRepository;
 
 import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.stream.StreamSupport;
+
+import static ru.svoi.catalog.services.CalendarService.parseDateRange;
 
 @Service
 public class CatalogService {
 
     @Autowired
     private ApartmentRepository apartmentRepository;
-
     @Autowired
     private MainImageRepository mainImageRepository;
+    @Autowired
+    private ImageRepository imageRepository;
 
 // написать метод формирования ApartmentItem
     public Catalog createCatalog(String city, String date) {
@@ -66,6 +73,60 @@ public class CatalogService {
         });
 
         return ResponseEntity.status(HttpStatus.OK).body(resources);
+    }
+
+    public ResponseEntity<List<Image>> getAllPhotoListToOneObject(String apartmentId) {
+
+        var apartmentIdLong = Long.parseLong(apartmentId.trim());
+
+        var saveTimeToFindPhotos = apartmentRepository.findById(apartmentIdLong)
+                .orElseThrow(() -> new NoSuchElementException("Не найден объект в БД с id = " + apartmentIdLong))
+                .getSaveTime();
+
+        List<Image> resources = StreamSupport.stream(imageRepository.findAll().spliterator(), false)
+                .filter(image -> image.getSaveTime().equals(saveTimeToFindPhotos))
+                .toList();
+
+        return ResponseEntity.status(HttpStatus.OK).body(resources);
+    }
+
+    public FullApartmentInfo getFullApartmentInfo(String apartmentId, String dates) {
+
+        var calendarList = parseDateRange(dates);
+
+        var apartment = apartmentRepository.findById(Long.parseLong(apartmentId.trim()))
+                .orElseThrow(() -> new NoSuchElementException("Такие апартаменты не найдены - Id-" + apartmentId));
+
+        var summary = apartmentRepository.getSummaryByDateList(apartment, calendarList);
+
+        var mainImage = mainImageRepository.findById(apartment.getMainImageId())
+                .orElseThrow(() -> new NoSuchElementException(
+                        String.format("Не найдено главное фото (id=%s) объекта (id=%s)",
+                                apartment.getMainImageId(), apartmentId)));
+
+        var imagesList = StreamSupport.stream(imageRepository.findAll().spliterator(), false)
+                .filter(image -> image.getSaveTime().equals(apartment.getSaveTime()))
+                .toList();
+
+        return FullApartmentInfo.builder()
+                .id(apartment.getId())
+                .name(apartment.getName())
+                .space(apartment.getSpace())
+                .bookingDates(calendarList)
+                .coordinates(apartment.getCoordinates())
+                .description(apartment.getDescription())
+                .fromDay(apartment.getFromDay())
+                .adult(apartment.getAdult())
+                .children(apartment.getChildren())
+                .beds(apartment.getBeds())
+                .services(apartment.getServices())
+                .conveniences(apartment.getConveniences())
+                .view(apartment.getView())
+                .city(apartment.getCity())
+                .summary(summary)
+                .mainImage(mainImage)
+                .images(imagesList)
+                .build();
     }
 
     // Хз зачем это в контроллерах - chatGPT сгенирил, без него не работает
