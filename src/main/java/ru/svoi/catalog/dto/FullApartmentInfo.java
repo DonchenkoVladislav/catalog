@@ -27,6 +27,8 @@ public class FullApartmentInfo {
 
     @Column(columnDefinition = "MEDIUMTEXT")
     private String description;
+
+    private String nights;
     private int space, adult, children, fromDay, summary;
 
     private Long saveTime;
@@ -35,7 +37,7 @@ public class FullApartmentInfo {
     private MainImage mainImage;
     private List<Image> images;
 
-    private List<Calendar> bookingDates;
+    private List<BookingDate> bookingDates;
 
     public FullApartmentInfo() {
     }

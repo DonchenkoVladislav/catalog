@@ -11,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.stereotype.Service;
+import ru.svoi.catalog.dto.BookingDate;
 import ru.svoi.catalog.dto.ByteArrayInputStreamSerializer;
 import ru.svoi.catalog.dto.ByteArrayResourceSerializer;
 import ru.svoi.catalog.dto.Catalog;
@@ -26,6 +27,7 @@ import ru.svoi.catalog.repo.MainImageRepository;
 
 import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.stream.StreamSupport;
@@ -98,6 +100,7 @@ public class CatalogService {
                 .orElseThrow(() -> new NoSuchElementException("Такие апартаменты не найдены - Id-" + apartmentId));
 
         var summary = apartmentRepository.getSummaryByDateList(apartment, calendarList);
+        var bookingDates = apartmentRepository.getBookingDatesList(apartment, calendarList);
 
         var mainImage = mainImageRepository.findById(apartment.getMainImageId())
                 .orElseThrow(() -> new NoSuchElementException(
@@ -112,7 +115,8 @@ public class CatalogService {
                 .id(apartment.getId())
                 .name(apartment.getName())
                 .space(apartment.getSpace())
-                .bookingDates(calendarList)
+                .nights(countNights(calendarList))
+                .bookingDates(bookingDates)
                 .coordinates(apartment.getCoordinates())
                 .description(apartment.getDescription())
                 .fromDay(apartment.getFromDay())
@@ -161,5 +165,13 @@ public class CatalogService {
         }
 
         return resultList;
+    }
+
+    private String countNights(List<Calendar> calendarList) {
+        return switch (calendarList.size() % 10) {
+            case 1 -> calendarList.size() + " ночь";
+            case 2, 3, 4 -> calendarList.size() + " ночи";
+            default -> calendarList.size() + " ночей";
+        };
     }
 }
